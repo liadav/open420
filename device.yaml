@@ -1,0 +1,9 @@
+# this is just a simple test device setup that's used to compile and test the examples
+
+esphome:
+  name: custom_components_test
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
