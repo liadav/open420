@@ -4,9 +4,9 @@
 #include "esphome/core/component.h"
 
 namespace esphome {
-namespace empty_sensor {
+namespace qvap {
 
-class EmptySensor : public sensor::Sensor, public PollingComponent {
+class QVap : public sensor::Sensor, public PollingComponent {
   void setup() override;
   void loop() override;
   void update() override;
