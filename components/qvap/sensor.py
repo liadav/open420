@@ -5,7 +5,7 @@ from esphome.const import UNIT_EMPTY, ICON_EMPTY
 
 qvap_ns = cg.esphome_ns.namespace("qvap")
 
-QVap = qvap_ns.class_("QVap", sensor.Sensor, cg.PollingComponent)
+QVap = qvap_ns.class_("qvap", sensor.Sensor, cg.PollingComponent)
 
 CONFIG_SCHEMA = sensor.sensor_schema(
     QVap, unit_of_measurement=UNIT_EMPTY, icon=ICON_EMPTY, accuracy_decimals=1
