@@ -1,4 +1,4 @@
-
+import struct
 import asyncio
 import argparse
 from bleak import BleakScanner, BleakClient
@@ -30,6 +30,10 @@ BIT_SETTINGS_BUTTON_CHANGED_FILLING_CHAMBER = 1 << 4
 BIT_SETTINGS_ECOMODE_VOLTAGE = 1 << 5
 BIT_SETTINGS_BOOST_VISUALIZATION = 1 << 6
 
+MASK_SET_TEMPERATURE_WRITE = 1 << 1
+MASK_SET_BOOST_WRITE = 1 << 2
+MASK_SET_SUPERBOOST_WRITE = 1 << 3
+
 class QVAPDevice:
     def __init__(self, address, service_uuid, service_uuid1, characteristic_uuid, characteristic_uuid_serial):
         self.address = address
@@ -57,30 +61,29 @@ class QVAPDevice:
         self.settings_flags = None
 
     async def connect(self):
-        async with BleakClient(self.address) as client:
-            self.client = client
-            await self.client.connect()
-            await self.discover_services()
-            await self.enable_notifications()
+        self.client = BleakClient(self.address)
+        await self.client.connect()
+        await self.discover_services()
+        await self.enable_notifications()
 
-            await self.init_connection()
-            await asyncio.sleep(0.5)
+        await self.init_connection()
+        await asyncio.sleep(0.5)
 
-            await self.setup_initial_params()
-            await asyncio.sleep(0.5)
-            await self.prepare_device()
-            await asyncio.sleep(0.5)
-            await self.additional_setup()
-            await asyncio.sleep(0.5)
-            await self.final_setup()
-            await asyncio.sleep(0.5)
+        await self.setup_initial_params()
+        await asyncio.sleep(0.5)
+        await self.prepare_device()
+        await asyncio.sleep(0.5)
+        await self.additional_setup()
+        await asyncio.sleep(0.5)
+        await self.final_setup()
+        await asyncio.sleep(0.5)
 
-            if self.serial_service:
-                await self.read_serial_number()
+        if self.serial_service:
+            await self.read_serial_number()
 
-            await self.final_stage()
-            await asyncio.sleep(0.5)
-            await self.start_periodic_updates()
+        await self.final_stage()
+        await asyncio.sleep(0.5)
+        asyncio.create_task(self.start_periodic_updates())
 
     async def discover_services(self):
         services = await self.client.get_services()
@@ -128,10 +131,7 @@ class QVAPDevice:
 
     async def start_periodic_updates(self):
         while self.notifications_enabled:
-            await self.send_command(COMMANDS["PREPARE_DEVICE"])
-            await asyncio.sleep(4)  # Periodic interval
-            await self.send_command(COMMANDS["SETUP_INITIAL_PARAMS"], [0])
-            await asyncio.sleep(4)  # Periodic interval
+            await self.send_periodic_command()
 
     async def send_command(self, command, data=[]):
         buffer = bytearray([command] + data + [0] * (20 - len(data) - 1))
@@ -139,6 +139,9 @@ class QVAPDevice:
 
     async def send_periodic_command(self):
         await self.send_command(COMMANDS["PREPARE_DEVICE"])
+        await asyncio.sleep(4)  # Periodic interval
+        await self.send_command(COMMANDS["SETUP_INITIAL_PARAMS"], [0])
+        await asyncio.sleep(4)  # Periodic interval
 
     def notification_handler(self, sender, data):
         print(f"Notification from {sender}: {data}")
@@ -151,6 +154,7 @@ class QVAPDevice:
             firmware_version = response[2:8].decode("utf-8")
             bootloader_version = response[11:17].decode("utf-8")
             print(f"Application Firmware: {firmware_version}, Bootloader: {bootloader_version}")
+            
             # Handle further firmware version comparison and update
         elif command in {1, 48}:
             if self.application_firmware & APPLICATION_FIRMWARE_MASK_APPLICATION and command != 48:
@@ -268,6 +272,41 @@ class QVAPDevice:
     async def handle_timeout_ble_response_missing_qvap(self, timeout):
         # Implement the timeout handler logic here
         pass
+
+    def convert_to_uint16_ble(self, value):
+        return struct.pack('<H', int(value))
+
+    async def set_target_temperature(self, val):
+        buffer = bytearray(20)
+        buffer[0] = 1
+        buffer[1] = MASK_SET_TEMPERATURE_WRITE
+        val *= 10
+        buffer[4] = val % 256
+        buffer[5] = int(val / 256)
+        await self.client.write_gatt_char(self.characteristic, buffer)
+        print("Soll temperature written successfully")
+
+    async def set_boost_temperature(self, val):
+        buffer = bytearray(20)
+        buffer[0] = 1
+        buffer[1] = MASK_SET_BOOST_WRITE
+        buffer[6] = val
+        try:
+            await self.client.write_gatt_char(self.characteristic, buffer)
+            print("Boost temperature written successfully")
+        except Exception as e:
+            print(f"Error writing boost temperature: {e}")
+
+    async def set_superboost_temperature(self, val):
+        buffer = bytearray(20)
+        buffer[0] = 1
+        buffer[1] = MASK_SET_SUPERBOOST_WRITE
+        buffer[7] = val
+        try:
+            await self.client.write_gatt_char(self.characteristic, buffer)
+            print("Superboost temperature written successfully")
+        except Exception as e:
+            print(f"Error writing superboost temperature: {e}")
 
 async def discover_devices():
     devices = await BleakScanner.discover()
