@@ -1,62 +1,68 @@
-#include "esphome.h"
-#include <string.h>
-#include "esphome.h"
+#include "esphome/core/component.h"
+#include "esphome/components/ble_client/ble_client.h"
+#include "esphome/components/esp32_ble_tracker/esp32_ble_tracker.h"
+#include "esphome/components/sensor/sensor.h"
+#include "esphome/components/api/custom_api_device.h"
+#include "hid_parser.h"
+
+#ifdef USE_ESP32
 
 namespace esphome {
 namespace qvap {
 
-class QVAPComponent : public ble_client::BLEClient {
- public:
-  QVAPComponent() : ble_client::BLEClient() {}  // Poll every 4 seconds
+namespace espbt=esphome::esp32_ble_tracker;
 
-  void setup() override;
-  void update() override;
-  //void set_target_temperature(float temperature);
-  //void set_boost_temperature(float temperature);
-  //void set_superboost_temperature(float temperature);
+enum class HIDState {
+  // Initial state
+  INIT,
+  SETUP,
 
- protected:
-  //void connect_to_qvap();
-  //void handle_connection_stage();
-  //void setup_initial_params();
-  //void prepare_device();
-  //void additional_setup();
-  //void final_setup();
-  //void read_device_parameters();
-  //void send_command(uint8_t command, std::vector<uint8_t> data = {});
-  //void notification_handler(BLERemoteCharacteristic* characteristic, uint8_t* data, size_t length);
-  //void parse_response(uint8_t* response, size_t length);
+  HID_SERVICE_FOUND,
 
-  //std::string address;
-  //BLEUUID serviceUUID = BLEUUID("00000000-5354-4f52-5a26-4249434b454c");
-  //BLEUUID charUUID = BLEUUID("00000001-5354-4f52-5a26-4249434b454c");
-  //BLEClient* pClient;
-  //BLERemoteCharacteristic* pRemoteCharacteristic;
-  //bool connected = false;
-
-  //enum ConnectionStage {
-  //  STAGE_INIT_CONNECTION,
-  //  STAGE_SETUP_INITIAL_PARAMS,
-  //  STAGE_PREPARE_DEVICE,
-  //  STAGE_ADDITIONAL_SETUP,
-  //  STAGE_FINAL_SETUP,
-  //  STAGE_COMPLETE
-  //} connection_stage;
-
-  //// Parameters
-  //float current_temp = 0;
-  //float set_temp = 0;
-  //float boost_temp = 0;
-  //float superboost_temp = 0;
-  //int battery_level = 0;
-  //int auto_shutoff = 0;
-  //int heater_mode = 0;
-  //int charger_status = 0;
-  //int settings_flags = 0;
-
-  //uint8_t application_firmware = 0;
-  //bool flip = false;  // To flip between two commands during periodic updates
+  NO_HID_SERVICE,
+  // Client is coonnected
+  BLE_CONNECTED,
+  // Start reading relevant client characteristics
+  READING_CHARS,
+  // Finished reaading client characteristics
+  READ_CHARS,
+  // Configure ble client with read chars e. g. register fr notify
+  CONFIGURING,
+  // Finished configuring e. g. notify registered
+  CONFIGURED,
+  // HID opened
+  OPENED,
+  // HID closed
+  CLOSED,
 };
 
-}  // namespace empty_sensor
+class GATTReadData {
+  public:
+    GATTReadData(uint16_t handle, uint8_t *value, uint16_t value_len){
+      this->handle_ = handle;
+      this->value_len_ = value_len;
+      this->value_ = new uint8_t[value_len];
+      memcpy(this->value_, value, sizeof(uint8_t) * value_len);
+    }
+    ~GATTReadData(){
+      delete value_;
+    }
+  public:
+    uint8_t *value_;
+    uint16_t value_len_;
+    uint16_t handle_;
+};
+
+class QVap : public Component, public api::CustomAPIDevice, public ble_client::BLEClientNode {
+ public:
+  void loop() override;
+  void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
+                           esp_ble_gattc_cb_param_t *param) override;
+
+  void dump_config() override;
+ protected:
+};
+
+}  // namespace qvap
 }  // namespace esphome
+#endif
