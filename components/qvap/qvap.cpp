@@ -1,7 +1,4 @@
 #include "esphome.h"
-#include <BLEDevice.h>
-#include <BLEUtils.h>
-#include <BLEClient.h>
 #include "qvap.h"
 
 namespace esphome {
