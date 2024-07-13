@@ -9,22 +9,10 @@ static const char *const TAG = "qvap";
 
 static const std::string EMPTY = "";
 
-void BLEClientHID::loop() {
-  switch (this->hid_state) {
-    case HIDState::BLE_CONNECTED:
-      this->read_client_characteristics(); //not instant, finished when hid_state = HIDState::READ_CHARS
-      this->hid_state = HIDState::READING_CHARS;
-      break;
-    case HIDState::READ_CHARS:
-      this->configure_hid_client();  // instant
-      this->hid_state = HIDState::CONFIGURED;
-      this->node_state = espbt::ClientState::ESTABLISHED;
-    default:
-      break;
-  }
+void QVap::loop() {
 }
 
-void BLEClientHID::dump_config() {
+void QVap::dump_config() {
   ESP_LOGCONFIG(TAG, "BLE Client HID:");
   ESP_LOGCONFIG(TAG, "  MAC address        : %s",
                 this->parent()->address_str().c_str());
@@ -93,11 +81,6 @@ void QVap::gattc_event_handler(esp_gattc_cb_event_t event,
       break;
     }
   }
-}
-
-
-
-void BLEClientHID::configure_hid_client() {
 }
 
 }  // namespace qvap
