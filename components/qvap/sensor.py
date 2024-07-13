@@ -9,7 +9,7 @@ QVap = qvap_ns.class_("QVap", sensor.Sensor, cg.PollingComponent)
 
 CONFIG_SCHEMA = sensor.sensor_schema(
     QVap, unit_of_measurement=UNIT_EMPTY, icon=ICON_EMPTY, accuracy_decimals=1
-).extend(cv.polling_component_schema("60s"))
+).extend(cv.polling_component_schema("4s"))
 
 
 async def to_code(config):

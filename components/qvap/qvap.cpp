@@ -23,6 +23,7 @@ void QVAPComponent::update() {
     }
     this->flip = !this->flip;
   } else {
+    ESP_LOGI("QVAP", "Connecting");
     this->handle_connection_stage();
   }
 }
