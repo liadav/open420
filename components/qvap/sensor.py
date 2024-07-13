@@ -10,14 +10,14 @@ qvap_ns = cg.esphome_ns.namespace("qvap")
 
 QVap = qvap_ns.class_("QVap", sensor.Sensor, cg.PollingComponent)
 
-CONFIG_SCHEMA = sensor.sensor_schema(
-    QVap, unit_of_measurement=UNIT_EMPTY, icon=ICON_EMPTY, accuracy_decimals=1
-)
+#CONFIG_SCHEMA = sensor.sensor_schema(
+#    QVap, unit_of_measurement=UNIT_EMPTY, icon=ICON_EMPTY, accuracy_decimals=1
+#)
 
 CONFIG_SCHEMA = (
     cv.Schema(
         {
-            cv.GenerateID(): cv.declare_id(RuuviTag),
+            cv.GenerateID(): cv.declare_id(QVap),
             cv.Required(CONF_MAC_ADDRESS): cv.mac_address,
 #            cv.Optional(CONF_TEMPERATURE): sensor.sensor_schema(
 #                unit_of_measurement=UNIT_CELSIUS,
