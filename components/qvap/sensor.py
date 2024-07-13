@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import sensor
+from esphome.components import sensor, esp32_ble_client
 from esphome.const import (
     CONF_MAC_ADDRESS,
     CONF_ID,
@@ -18,7 +18,7 @@ CONFIG_SCHEMA = (
     cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(QVap),
-            cv.Required(CONF_MAC_ADDRESS): cv.mac_address,
+            cv.Required(CONF_ID): cv.esp32_ble_client,
 #            cv.Optional(CONF_TEMPERATURE): sensor.sensor_schema(
 #                unit_of_measurement=UNIT_CELSIUS,
 #                accuracy_decimals=2,
