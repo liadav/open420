@@ -1,15 +1,13 @@
 #include "esphome.h"
 #include <string.h>
-#include <BLEDevice.h>
-#include <BLEUtils.h>
-#include <BLEClient.h>
+#include "esphome.h"
 
 namespace esphome {
 namespace qvap {
 
-class QVAPComponent : public PollingComponent, public sensor::Sensor {
+class QVAPComponent : public ble_client::BLEClient {
  public:
-  QVAPComponent() : PollingComponent(4000) {}  // Poll every 4 seconds
+  QVAPComponent() : ble_client::BLEClient() {}  // Poll every 4 seconds
 
   void setup() override;
   void update() override;
