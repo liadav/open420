@@ -4,7 +4,7 @@ import esphome.config_validation as cv
 from esphome.components import ble_client
 from esphome.const import CONF_ID
 
-DEPENDENCIES = ['ble_client']
+DEPENDENCIES = ['esp32_ble_tracker']
 
 qvap_ns = cg.esphome_ns.namespace('qvap_device')
 QVAPDevice = qvap_ns.class_('QVAPDevice', cg.Component, ble_client.BLEClientNode)
