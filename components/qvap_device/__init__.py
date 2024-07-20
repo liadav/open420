@@ -13,7 +13,7 @@ CONF_IBEACON_UUID = 'ibeacon_uuid'
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(QVAPDevice),
-    cv.Required(CONF_IBEACON_UUID): cv.hex_uint8_list,
+    cv.Required(CONF_IBEACON_UUID): cv.uuid,
 }).extend(cv.COMPONENT_SCHEMA).extend(ble_client.BLE_CLIENT_SCHEMA)
 
 def to_code(config):
