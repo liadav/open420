@@ -1,67 +1,53 @@
 #include "esphome/core/component.h"
-#include "esphome/components/ble_client/ble_client.h"
-#include "esphome/components/esp32_ble_tracker/esp32_ble_tracker.h"
-#include "esphome/components/sensor/sensor.h"
-#include "esphome/components/api/custom_api_device.h"
-
-#ifdef USE_ESP32
+#include "esphome/components/esp32_ble_client/esp32_ble_client.h"
 
 namespace esphome {
-namespace qvap {
+namespace qvap_device {
 
-namespace espbt=esphome::esp32_ble_tracker;
-
-enum class HIDState {
-  // Initial state
-  INIT,
-  SETUP,
-
-  HID_SERVICE_FOUND,
-
-  NO_HID_SERVICE,
-  // Client is coonnected
-  BLE_CONNECTED,
-  // Start reading relevant client characteristics
-  READING_CHARS,
-  // Finished reaading client characteristics
-  READ_CHARS,
-  // Configure ble client with read chars e. g. register fr notify
-  CONFIGURING,
-  // Finished configuring e. g. notify registered
-  CONFIGURED,
-  // HID opened
-  OPENED,
-  // HID closed
-  CLOSED,
-};
-
-class GATTReadData {
-  public:
-    GATTReadData(uint16_t handle, uint8_t *value, uint16_t value_len){
-      this->handle_ = handle;
-      this->value_len_ = value_len;
-      this->value_ = new uint8_t[value_len];
-      memcpy(this->value_, value, sizeof(uint8_t) * value_len);
-    }
-    ~GATTReadData(){
-      delete value_;
-    }
-  public:
-    uint8_t *value_;
-    uint16_t value_len_;
-    uint16_t handle_;
-};
-
-class QVap : public Component, public api::CustomAPIDevice, public ble_client::BLEClientNode {
+class QVAPDevice : public Component, public esp32_ble_client::ESP32BLEClient {
  public:
+  void setup() override;
   void loop() override;
-  void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
-                           esp_ble_gattc_cb_param_t *param) override;
-
   void dump_config() override;
+
+  void set_ibeacon_uuid(const std::vector<uint8_t> &uuid) { std::copy(uuid.begin(), uuid.end(), std::begin(ibeacon_uuid_)); }
+
  protected:
+  enum State {
+    STATE_IDLE,
+    STATE_INIT_CONNECTION,
+    STATE_SETUP_INITIAL_PARAMS,
+    STATE_PREPARE_DEVICE,
+    STATE_ADDITIONAL_SETUP,
+    STATE_FINAL_SETUP,
+    STATE_WAIT_FOR_NOTIFICATION,
+    STATE_BOOTLOADER_UPDATE
+  };
+
+  enum WriteSubState {
+    WRITE_IDLE,
+    WRITE_IN_PROGRESS,
+    WRITE_OK,
+    WRITE_FAILED
+  };
+
+  void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param);
+  void parse_response(uint8_t *response, size_t length);
+  void start_scan();
+  bool is_target_device(const esp_ble_gap_cb_param_t::scan_rst &scan_rst);
+  void send_command(uint8_t command, const std::vector<uint8_t> &data = {});
+
+  uint8_t ibeacon_uuid_[16];
+  uint16_t conn_id;
+  esp_gatt_if_t client_if;
+  bool ble_process_pending_;
+  State state;
+  WriteSubState write_sub_state_;
+  uint8_t application_firmware;
+  uint16_t char_handle_;
+
+  void set_ble_process_pending(bool pending) { ble_process_pending_ = pending; }
 };
 
-}  // namespace qvap
+}  // namespace qvap_device
 }  // namespace esphome
-#endif
