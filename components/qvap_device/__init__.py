@@ -14,7 +14,7 @@ CONF_IBEACON_UUID = 'ibeacon_uuid'
 # Custom validator for iBeacon UUID
 def validate_hex_uint8_list(value):
     value = cv.ensure_list_csv(value)
-    if len(value) != 16):
+    if len(value) != 16:
         raise cv.Invalid("iBeacon UUID must be a list of 16 hexadecimal values.")
     for v in value:
         cv.hex_uint8(v)
