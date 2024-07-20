@@ -1,7 +1,6 @@
 
 #include "qvap_device.h"
 #include "esphome/core/log.h"
-#include "esphome/components/esp32_ble_tracker/esp32_ble_tracker.h"
 
 namespace esphome {
 namespace qvap_device {
@@ -12,113 +11,15 @@ static const uint128_t QVAP_SERVICE_UUID = {0x00000000, 0x5354, 0x4f52, 0x5a26, 
 static const uint128_t QVAP_CHARACTERISTIC_UUID = {0x00000001, 0x5354, 0x4f52, 0x5a26, 0x4249434b454c};
 static const uint16_t QVAP_DESCRIPTOR_UUID = 0x2902;  // Client Characteristic Configuration Descriptor UUID
 
-// Initialize ble_scan_params
-static esp_ble_scan_params_t ble_scan_params = {
-  .scan_type = BLE_SCAN_TYPE_PASSIVE,
-  .own_addr_type = BLE_ADDR_TYPE_PUBLIC,
-  .scan_filter_policy = BLE_SCAN_FILTER_ALLOW_ALL,
-  .scan_interval = 0x50,
-  .scan_window = 0x30,
-  .scan_duplicate = BLE_SCAN_DUPLICATE_DISABLE
-};
-
 void QVAPDevice::setup() {
   ESP_LOGCONFIG(TAG, "Setting up QVAPDevice...");
   this->register_for_notify(this->gattc_event_handler);
-  this->start_scan();
+  this->scan_for_devices();
 }
 
-void QVAPDevice::loop() {
-  if (!ble_process_pending_ && write_sub_state_ == WRITE_IDLE) {
-    uint8_t command_buffer[32];
-    switch (state) {
-      case STATE_INIT_CONNECTION:
-        this->create_command_buffer(0x02, command_buffer);  // INIT_CONNECTION
-        esp_ble_gattc_write_char(client_if, conn_id, char_handle_, sizeof(command_buffer), command_buffer, ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
-        write_sub_state_ = WRITE_IN_PROGRESS;
-        this->set_ble_process_pending(true);
-        break;
-      case STATE_SETUP_INITIAL_PARAMS:
-        this->create_command_buffer(0x01, command_buffer);  // SETUP_INITIAL_PARAMS
-        esp_ble_gattc_write_char(client_if, conn_id, char_handle_, sizeof(command_buffer), command_buffer, ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
-        write_sub_state_ = WRITE_IN_PROGRESS;
-        this->set_ble_process_pending(true);
-        break;
-      case STATE_PREPARE_DEVICE:
-        this->create_command_buffer(0x04, command_buffer);  // PREPARE_DEVICE
-        esp_ble_gattc_write_char(client_if, conn_id, char_handle_, sizeof(command_buffer), command_buffer, ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
-        write_sub_state_ = WRITE_IN_PROGRESS;
-        this->set_ble_process_pending(true);
-        break;
-      case STATE_ADDITIONAL_SETUP:
-        this->create_command_buffer(0x05, command_buffer);  // ADDITIONAL_SETUP
-        esp_ble_gattc_write_char(client_if, conn_id, char_handle_, sizeof(command_buffer), command_buffer, ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
-        write_sub_state_ = WRITE_IN_PROGRESS;
-        this->set_ble_process_pending(true);
-        break;
-      case STATE_FINAL_SETUP:
-        this->create_command_buffer(0x06, command_buffer);  // FINAL_SETUP
-        esp_ble_gattc_write_char(client_if, conn_id, char_handle_, sizeof(command_buffer), command_buffer, ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
-        write_sub_state_ = WRITE_IN_PROGRESS;
-        this->set_ble_process_pending(true);
-        break;
-      case STATE_WAIT_FOR_NOTIFICATION:
-        if (application_firmware != 0) {
-          memset(command_buffer, 0, 32);  // Initialize all bytes to 0
-          command_buffer[1] = 6;
-          if (application_firmware & 0x01) {
-            command_buffer[0] = 0x30;  // BOOTLOADER_UPDATE
-          } else {
-            command_buffer[0] = 0x01;  // SETUP_INITIAL_PARAMS
-          }
-          esp_ble_gattc_write_char(client_if, conn_id, char_handle_, sizeof(command_buffer), command_buffer, ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
-          state = STATE_BOOTLOADER_UPDATE;
-          write_sub_state_ = WRITE_IN_PROGRESS;
-          this->set_ble_process_pending(true);
-        }
-        break;
-      default:
-        break;
-    }
-  }
-
-  if (write_sub_state_ == WRITE_OK) {
-    switch (state) {
-      case STATE_INIT_CONNECTION:
-        state = STATE_SETUP_INITIAL_PARAMS;
-        break;
-      case STATE_SETUP_INITIAL_PARAMS:
-        state = STATE_PREPARE_DEVICE;
-        break;
-      case STATE_PREPARE_DEVICE:
-        state = STATE_ADDITIONAL_SETUP;
-        break;
-      case STATE_ADDITIONAL_SETUP:
-        state = STATE_FINAL_SETUP;
-        break;
-      case STATE_FINAL_SETUP:
-        state = STATE_WAIT_FOR_NOTIFICATION;
-        break;
-      default:
-        break;
-    }
-    write_sub_state_ = WRITE_IDLE;
-  }
-}
-
-void QVAPDevice::start_scan() {
-  ESP_LOGI(TAG, "Starting BLE scan...");
-  esp_ble_gap_set_scan_params(&ble_scan_params);
-}
-
-bool QVAPDevice::is_target_device(const esp_ble_gap_cb_param_t::scan_rst &scan_rst) {
-  if (scan_rst.ble_adv[0] == 0x02 && scan_rst.ble_adv[1] == 0x01) {
-    if (memcmp(scan_rst.ble_adv + 9, ibeacon_uuid_, 16) == 0) {
-      ESP_LOGI(TAG, "Found target iBeacon device!");
-      return true;
-    }
-  }
-  return false;
+void QVAPDevice::dump_config() {
+  ESP_LOGCONFIG(TAG, "QVAPDevice:");
+  ESP_LOGCONFIG(TAG, "  iBeacon UUID: %s", format_hex_pretty(this->ibeacon_uuid_, sizeof(this->ibeacon_uuid_)).c_str());
 }
 
 void QVAPDevice::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param) {
@@ -148,19 +49,7 @@ void QVAPDevice::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t g
     case ESP_GATTC_SEARCH_CMPL_EVT:
       ESP_LOGI(TAG, "SEARCH_CMPL_EVT, conn_id %d, status %d", param->search_cmpl.conn_id, param->search_cmpl.status);
       if (param->search_cmpl.status == ESP_GATT_OK) {
-        // Confirm if the discovered services include our target service
-        bool found = false;
-        for (uint16_t i = 0; i < param->search_cmpl.num; ++i) {
-          if (memcmp(param->search_cmpl.result[i].uuid.uuid.uuid128, QVAP_SERVICE_UUID, 16) == 0) {
-            found = true;
-            break;
-          }
-        }
-        if (found) {
-          esp_ble_gattc_get_characteristic(gattc_if, param->search_cmpl.conn_id, NULL, NULL);
-        } else {
-          ESP_LOGI(TAG, "QVAP service not found in search complete.");
-        }
+        esp_ble_gattc_get_characteristic(gattc_if, param->search_cmpl.conn_id, NULL, NULL);
       }
       break;
     case ESP_GATTC_GET_CHAR_EVT:
@@ -191,7 +80,6 @@ void QVAPDevice::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t g
         ESP_LOGE(TAG, "write descriptor failed, status %d", param->write.status);
         break;
       }
-      // Trigger the first command after enabling notifications
       state = STATE_INIT_CONNECTION;
       write_sub_state_ = WRITE_IDLE;
       this->set_ble_process_pending(false);
@@ -249,11 +137,9 @@ void QVAPDevice::parse_response(uint8_t *response, size_t length) {
       ESP_LOGI(TAG, "_______cmd0x01 - bootloader");
       uint8_t status = response[1];
       if (status == 0x01) {
-        // Handle page data write
         ESP_LOGI(TAG, "Page data write request");
         this->write_page_data_sequence_qvap();
       } else if (status == 0x02) {
-        // Handle page write completion
         ESP_LOGI(TAG, "Page write complete");
         this->start_qvap_application(true);
       } else if (status == 0x06) {
