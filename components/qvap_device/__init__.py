@@ -6,14 +6,14 @@ from esphome.const import CONF_ID
 DEPENDENCIES = ['esp32_ble_client']
 
 qvap_ns = cg.esphome_ns.namespace('qvap_device')
-QVAPDevice = qvap_ns.class_('QVAPDevice', cg.Component, esp32_ble_client.ESP32BLEClient)
+QVAPDevice = qvap_ns.class_('QVAPDevice', cg.Component, esp32_ble_client.BLEClient)
 
 CONF_IBEACON_UUID = 'ibeacon_uuid'
 
 CONFIG_SCHEMA = cv.Schema({
     cv.GenerateID(): cv.declare_id(QVAPDevice),
     cv.Required(CONF_IBEACON_UUID): cv.hex_uint8_list,
-}).extend(cv.COMPONENT_SCHEMA).extend(esp32_ble_client.ESP32_BLE_CLIENT_SCHEMA)
+}).extend(cv.COMPONENT_SCHEMA).extend(esp32_ble_client.BLE_CLIENT_SCHEMA)
 
 def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
