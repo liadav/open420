@@ -31,8 +31,6 @@ CONFIG_SCHEMA = cv.Schema({
         cv.Optional("min_value", default=0): cv.float_,
         cv.Optional("max_value", default=100): cv.float_,
         cv.Optional("step", default=0.1): cv.float_,
-        cv.Optional("unit_of_measurement", default=UNIT_CELSIUS): cv.string,
-        cv.Optional("icon", default=ICON_THERMOMETER): cv.icon,
     }),
 }).extend(cv.polling_component_schema('1s'))
 
