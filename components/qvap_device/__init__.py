@@ -105,8 +105,6 @@ def to_code(config):
             min_value=num_conf["min_value"],
             max_value=num_conf["max_value"],
             step=num_conf["step"],
-            unit_of_measurement=num_conf.get("unit_of_measurement", UNIT_CELSIUS),
-            icon=num_conf.get("icon", ICON_THERMOMETER)
         )
         cg.add(var.set_target_temp_number(num))
 
