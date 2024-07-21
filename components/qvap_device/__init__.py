@@ -27,10 +27,10 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional("device_name_sensor"): sensor.sensor_schema(unit_of_measurement=UNIT_EMPTY, icon=ICON_EMPTY),
     cv.Optional("heater_runtime_sensor"): sensor.sensor_schema(unit_of_measurement=UNIT_EMPTY, icon=ICON_EMPTY),
     cv.Optional("battery_charging_time_sensor"): sensor.sensor_schema(unit_of_measurement=UNIT_EMPTY, icon=ICON_EMPTY),
-    cv.Optional("target_temp_number"): number.number_schema(
-        unit_of_measurement=UNIT_CELSIUS,
-        icon=ICON_THERMOMETER
-    ),
+    #cv.Optional("target_temp_number"): number.number_schema(
+    #    unit_of_measurement=UNIT_CELSIUS,
+    #    icon=ICON_THERMOMETER
+    #),
 }).extend(cv.polling_component_schema('1s'))
 
 def to_code(config):
@@ -98,9 +98,9 @@ def to_code(config):
         sens = yield sensor.new_sensor(config["battery_charging_time_sensor"])
         cg.add(var.set_battery_charging_time_sensor(sens))
 
-    if "target_temp_number" in config:
-        num = yield number.new_number(config["target_temp_number"])
-        cg.add(var.set_target_temp_number(num))
+    #if "target_temp_number" in config:
+    #    num = yield number.new_number(config["target_temp_number"])
+    #    cg.add(var.set_target_temp_number(num))
 
     yield cg.register_component(var, config)
     yield ble_client.register_ble_node(var, config)
