@@ -3,7 +3,7 @@
 #include "esphome/components/ble_client/ble_client.h"
 #include "esphome/components/esp32_ble_tracker/esp32_ble_tracker.h"
 //#include "esphome/components/number/number.h"
-//#include "esphome/components/sensor/sensor.h"
+#include "esphome/components/sensor/sensor.h"
 
 namespace esphome {
 namespace qvap_device {
