@@ -104,5 +104,5 @@ def to_code(config):
 
     yield cg.register_component(var, config)
     yield ble_client.register_ble_node(var, config)
-    yield esp32_ble_tracker.register_ble_listener(var)
+    #yield esp32_ble_tracker.register_ble_listener(var)
 
