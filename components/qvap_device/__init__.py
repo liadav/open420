@@ -28,9 +28,6 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional("heater_runtime_sensor"): sensor.sensor_schema(unit_of_measurement=UNIT_EMPTY, icon=ICON_EMPTY),
     cv.Optional("battery_charging_time_sensor"): sensor.sensor_schema(unit_of_measurement=UNIT_EMPTY, icon=ICON_EMPTY),
     cv.Optional("target_temp_number"): number.number_schema(
-        min_value=0.0,
-        max_value=100.0,
-        step=0.1,
         unit_of_measurement=UNIT_CELSIUS,
         icon=ICON_THERMOMETER
     ),
