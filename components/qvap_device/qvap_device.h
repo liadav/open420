@@ -1,9 +1,11 @@
+#pragma once
 
 #include "esphome.h"
+#include "esphome/core/component.h"
 #include "esphome/components/ble_client/ble_client.h"
 #include "esphome/components/esp32_ble_tracker/esp32_ble_tracker.h"
 //#include "esphome/components/number/number.h"
-#include "esphome/components/sensor/sensor.h"
+//#include "esphome/components/sensor/sensor.h"
 
 namespace esphome {
 namespace qvap_device {
@@ -60,21 +62,21 @@ class QVAPDevice : public PollingComponent, public ble_client::BLEClientNode, pu
   void set_target_temperature(float value);
 
   // Sensors
-  sensor::Sensor *current_temp_sensor = nullptr;
-  sensor::Sensor *set_temp_sensor = nullptr;
-  sensor::Sensor *boost_temp_sensor = nullptr;
-  sensor::Sensor *superboost_temp_sensor = nullptr;
-  sensor::Sensor *battery_level_sensor = nullptr;
-  sensor::Sensor *auto_shutoff_sensor = nullptr;
-  sensor::Sensor *heater_mode_sensor = nullptr;
-  sensor::Sensor *charger_status_sensor = nullptr;
-  sensor::Sensor *settings_flags_sensor = nullptr;
-  sensor::Sensor *brightness_sensor = nullptr;
-  sensor::Sensor *vibration_sensor = nullptr;
-  sensor::Sensor *device_prefix_sensor = nullptr;
-  sensor::Sensor *device_name_sensor = nullptr;
-  sensor::Sensor *heater_runtime_sensor = nullptr;
-  sensor::Sensor *battery_charging_time_sensor = nullptr;
+  //sensor::Sensor *current_temp_sensor = nullptr;
+  //sensor::Sensor *set_temp_sensor = nullptr;
+  //sensor::Sensor *boost_temp_sensor = nullptr;
+  //sensor::Sensor *superboost_temp_sensor = nullptr;
+  //sensor::Sensor *battery_level_sensor = nullptr;
+  //sensor::Sensor *auto_shutoff_sensor = nullptr;
+  //sensor::Sensor *heater_mode_sensor = nullptr;
+  //sensor::Sensor *charger_status_sensor = nullptr;
+  //sensor::Sensor *settings_flags_sensor = nullptr;
+  //sensor::Sensor *brightness_sensor = nullptr;
+  //sensor::Sensor *vibration_sensor = nullptr;
+  //sensor::Sensor *device_prefix_sensor = nullptr;
+  //sensor::Sensor *device_name_sensor = nullptr;
+  //sensor::Sensor *heater_runtime_sensor = nullptr;
+  //sensor::Sensor *battery_charging_time_sensor = nullptr;
 
   // Number
 //  number::Number *target_temp_number = nullptr;

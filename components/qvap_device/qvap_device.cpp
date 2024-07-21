@@ -138,24 +138,24 @@ void QVAPDevice::parse_response(const uint8_t *data, size_t length) {
                this->current_temp, this->set_temp, this->boost_temp, this->superboost_temp, this->battery_level, this->auto_shutoff, this->heater_mode, this->charger_status, this->settings_flags);
 
       // Publish sensor values
-      if (this->current_temp_sensor != nullptr)
-        this->current_temp_sensor->publish_state(this->current_temp);
-      if (this->set_temp_sensor != nullptr)
-        this->set_temp_sensor->publish_state(this->set_temp);
-      if (this->boost_temp_sensor != nullptr)
-        this->boost_temp_sensor->publish_state(this->boost_temp);
-      if (this->superboost_temp_sensor != nullptr)
-        this->superboost_temp_sensor->publish_state(this->superboost_temp);
-      if (this->battery_level_sensor != nullptr)
-        this->battery_level_sensor->publish_state(this->battery_level);
-      if (this->auto_shutoff_sensor != nullptr)
-        this->auto_shutoff_sensor->publish_state(this->auto_shutoff);
-      if (this->heater_mode_sensor != nullptr)
-        this->heater_mode_sensor->publish_state(this->heater_mode);
-      if (this->charger_status_sensor != nullptr)
-        this->charger_status_sensor->publish_state(this->charger_status);
-      if (this->settings_flags_sensor != nullptr)
-        this->settings_flags_sensor->publish_state(this->settings_flags);
+      //if (this->current_temp_sensor != nullptr)
+      //  this->current_temp_sensor->publish_state(this->current_temp);
+      //if (this->set_temp_sensor != nullptr)
+      //  this->set_temp_sensor->publish_state(this->set_temp);
+      //if (this->boost_temp_sensor != nullptr)
+      //  this->boost_temp_sensor->publish_state(this->boost_temp);
+      //if (this->superboost_temp_sensor != nullptr)
+      //  this->superboost_temp_sensor->publish_state(this->superboost_temp);
+      //if (this->battery_level_sensor != nullptr)
+      //  this->battery_level_sensor->publish_state(this->battery_level);
+      //if (this->auto_shutoff_sensor != nullptr)
+      //  this->auto_shutoff_sensor->publish_state(this->auto_shutoff);
+      //if (this->heater_mode_sensor != nullptr)
+      //  this->heater_mode_sensor->publish_state(this->heater_mode);
+      //if (this->charger_status_sensor != nullptr)
+      //  this->charger_status_sensor->publish_state(this->charger_status);
+      //if (this->settings_flags_sensor != nullptr)
+      //  this->settings_flags_sensor->publish_state(this->settings_flags);
     } else {
       ESP_LOGI(TAG, "_______cmd0x01 - bootloader");
       // Handle bootloader update steps
@@ -239,40 +239,40 @@ void QVAPDevice::parse_response(const uint8_t *data, size_t length) {
       if (!(data[7] & 1)) {
         ESP_LOGI(TAG, "Vibration disabled");
       }
-      if (this->brightness_sensor != nullptr)
-        this->brightness_sensor->publish_state(data[2]);
-      if (this->vibration_sensor != nullptr)
-        this->vibration_sensor->publish_state(data[5]);
+      //if (this->brightness_sensor != nullptr)
+      //  this->brightness_sensor->publish_state(data[2]);
+      //if (this->vibration_sensor != nullptr)
+      //  this->vibration_sensor->publish_state(data[5]);
     }
   } else if (command == 4) {
     if (length >= 20) {
       this->heater_runtime_minutes = (data[1] | (data[2] << 8) | (data[3] << 16));
       this->battery_charging_time_minutes = (data[4] | (data[5] << 8) | (data[6] << 16));
       ESP_LOGI(TAG, "Heater Runtime: %d minutes, Battery Charging Time: %d minutes", this->heater_runtime_minutes, this->battery_charging_time_minutes);
-      if (this->heater_runtime_sensor != nullptr)
-        this->heater_runtime_sensor->publish_state(this->heater_runtime_minutes);
-      if (this->battery_charging_time_sensor != nullptr)
-        this->battery_charging_time_sensor->publish_state(this->battery_charging_time_minutes);
+      //if (this->heater_runtime_sensor != nullptr)
+      //  this->heater_runtime_sensor->publish_state(this->heater_runtime_minutes);
+      //if (this->battery_charging_time_sensor != nullptr)
+      //  this->battery_charging_time_sensor->publish_state(this->battery_charging_time_minutes);
     }
   } else if (command == 5) {
     if (length >= 17) {
       this->device_prefix = std::string(reinterpret_cast<const char*>(data + 15), 2);
       this->device_name = std::string(reinterpret_cast<const char*>(data + 9), 6);
       ESP_LOGI(TAG, "Device Prefix: %s, Device Name: %s", this->device_prefix.c_str(), this->device_name.c_str());
-      if (this->device_prefix_sensor != nullptr)
-        this->device_prefix_sensor->publish_state(this->device_prefix);
-      if (this->device_name_sensor != nullptr)
-        this->device_name_sensor->publish_state(this->device_name);
+      //if (this->device_prefix_sensor != nullptr)
+      //  this->device_prefix_sensor->publish_state(this->device_prefix);
+      //if (this->device_name_sensor != nullptr)
+      //  this->device_name_sensor->publish_state(this->device_name);
     }
   } else if (command == 6) {
     if (length >= 5) {
       this->brightness = data[2];
       this->vibration = data[5];
       ESP_LOGI(TAG, "Brightness: %d, Vibration: %s", this->brightness, (this->vibration ? "Enabled" : "Disabled"));
-      if (this->brightness_sensor != nullptr)
-        this->brightness_sensor->publish_state(this->brightness);
-      if (this->vibration_sensor != nullptr)
-        this->vibration_sensor->publish_state(this->vibration);
+      //if (this->brightness_sensor != nullptr)
+      //  this->brightness_sensor->publish_state(this->brightness);
+      //if (this->vibration_sensor != nullptr)
+      //  this->vibration_sensor->publish_state(this->vibration);
     }
   } else {
     ESP_LOGI(TAG, "Default command %d", command);
