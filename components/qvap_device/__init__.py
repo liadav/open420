@@ -28,9 +28,9 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional("heater_runtime_sensor"): sensor.sensor_schema(unit_of_measurement=UNIT_EMPTY, icon=ICON_EMPTY),
     cv.Optional("battery_charging_time_sensor"): sensor.sensor_schema(unit_of_measurement=UNIT_EMPTY, icon=ICON_EMPTY),
     cv.Optional("target_temp_number"): number.NUMBER_SCHEMA.extend({
-        cv.Optional("min_value", default=0): cv.float_,
-        cv.Optional("max_value", default=100): cv.float_,
-        cv.Optional("step", default=0.1): cv.float_,
+        cv.Required("min_value", default=0): cv.float_,
+        cv.Required("max_value", default=100): cv.float_,
+        cv.Required("step", default=0.1): cv.float_,
         cv.Optional("unit_of_measurement", default=UNIT_CELSIUS): cv.string,
         cv.Optional("icon", default=ICON_THERMOMETER): cv.icon,
     }),
@@ -102,7 +102,13 @@ def to_code(config):
         cg.add(var.set_battery_charging_time_sensor(sens))
 
     if "target_temp_number" in config:
-        num = yield number.new_number(config["target_temp_number"])
+        num = yield number.new_number(
+            min_value=config["target_temp_number"]["min_value"],
+            max_value=config["target_temp_number"]["max_value"],
+            step=config["target_temp_number"]["step"],
+            unit_of_measurement=config["target_temp_number"]["unit_of_measurement"],
+            icon=config["target_temp_number"]["icon"]
+        )
         cg.add(var.set_target_temp_number(num))
 
     yield cg.register_component(var, config)
