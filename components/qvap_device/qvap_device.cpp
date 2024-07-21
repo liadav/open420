@@ -288,17 +288,17 @@ void QVAPDevice::on_scan_found_device(const esp32_ble_tracker::ESPBTDevice &devi
   }
 }
 
-void QVAPDevice::write_page_data_sequence_qvap() {
-  // Implement the write page data sequence logic here
-}
-
-void QVAPDevice::write_page_data_sequence_qvap() {
-  // Implement the write page data sequence logic here
-}
-
-void QVAPDevice::start_qvap_application(bool repeat) {
-  // Implement the start QVAP application logic here
-}
+//void QVAPDevice::write_page_data_sequence_qvap() {
+//  // Implement the write page data sequence logic here
+//}
+//
+//void QVAPDevice::write_page_data_sequence_qvap() {
+//  // Implement the write page data sequence logic here
+//}
+//
+//void QVAPDevice::start_qvap_application(bool repeat) {
+//  // Implement the start QVAP application logic here
+//}
 
 void QVAPDevice::set_target_temperature(float value) {
   int int_value = static_cast<int>(value * 10);
