@@ -103,9 +103,9 @@ def to_code(config):
         num_conf = config["target_temp_number"]
         num = yield number.new_number(
             config=num_conf
-            #min_value=num_conf["min_value"],
-            #max_value=num_conf["max_value"],
-            #step=num_conf["step"],
+            min_value=num_conf["min_value"],
+            max_value=num_conf["max_value"],
+            step=num_conf["step"],
         )
         cg.add(var.set_target_temp_number(num))
 
