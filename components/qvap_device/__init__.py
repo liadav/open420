@@ -31,7 +31,7 @@ CONFIG_SCHEMA = cv.Schema({
     #    unit_of_measurement=UNIT_CELSIUS,
     #    icon=ICON_THERMOMETER
     #),
-}).extend(cv.polling_component_schema('1s'))
+}).extend(cv.polling_component_schema('1s')).extend(ble_client.BLE_CLIENT_SCHEMA)
 
 def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
