@@ -2,7 +2,7 @@
 #include "esphome.h"
 #include "esphome/components/ble_client/ble_client.h"
 #include "esphome/components/esp32_ble_tracker/esp32_ble_tracker.h"
-#include "esphome/components/number/number.h"
+//#include "esphome/components/number/number.h"
 #include "esphome/components/sensor/sensor.h"
 
 namespace esphome {
@@ -77,7 +77,7 @@ class QVAPDevice : public PollingComponent, public ble_client::BLEClientNode, pu
   sensor::Sensor *battery_charging_time_sensor = nullptr;
 
   // Number
-  number::Number *target_temp_number = nullptr;
+//  number::Number *target_temp_number = nullptr;
 
  protected:
   std::string ibeacon_name;
