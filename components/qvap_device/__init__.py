@@ -102,11 +102,7 @@ def to_code(config):
         cg.add(var.set_battery_charging_time_sensor(sens))
 
     if "target_temp_number" in config:
-        num = yield number.new_number(
-            min_value=config["target_temp_number"]["min_value"],
-            max_value=config["target_temp_number"]["max_value"],
-            step=config["target_temp_number"]["step"]
-        )
+        num = yield number.new_number(config["target_temp_number"])
         cg.add(var.set_target_temp_number(num))
 
     yield cg.register_component(var, config)
