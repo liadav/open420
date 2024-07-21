@@ -1,223 +1,314 @@
 
 #include "qvap_device.h"
-#include "esphome/core/log.h"
 
 namespace esphome {
 namespace qvap_device {
 
-static const char *TAG = "qvap_device";
-static const uint8_t IBEACON_UUID[16] = { /* Your iBeacon UUID */ };
-static const uint128_t QVAP_SERVICE_UUID = {0x00000000, 0x5354, 0x4f52, 0x5a26, 0x4249434b454c};
-static const uint128_t QVAP_CHARACTERISTIC_UUID = {0x00000001, 0x5354, 0x4f52, 0x5a26, 0x4249434b454c};
-static const uint16_t QVAP_DESCRIPTOR_UUID = 0x2902;  // Client Characteristic Configuration Descriptor UUID
+void QVAPDevice::set_ibeacon_name(const std::string &name) {
+  this->ibeacon_name = name;
+}
+
+void QVAPDevice::set_ibeacon_address(const std::string &address) {
+  this->ibeacon_address = address;
+}
 
 void QVAPDevice::setup() {
-  ESP_LOGCONFIG(TAG, "Setting up QVAPDevice...");
-  this->register_for_notify(this->gattc_event_handler);
-  this->scan_for_devices();
+  ESP_LOGI(TAG, "Setting up QVAP Device...");
+  this->connect_to_ble();
 }
 
-void QVAPDevice::dump_config() {
-  ESP_LOGCONFIG(TAG, "QVAPDevice:");
-  ESP_LOGCONFIG(TAG, "  iBeacon UUID: %s", format_hex_pretty(this->ibeacon_uuid_, sizeof(this->ibeacon_uuid_)).c_str());
+void QVAPDevice::connect_to_ble() {
+  this->parent()->add_on_connect_callback([this]() {
+    ESP_LOGI(TAG, "Connected to QVapDevice, initializing...");
+    this->state = STATE_INIT_CONNECTION;
+  });
+
+  this->parent()->add_on_disconnect_callback([this]() {
+    ESP_LOGI(TAG, "Disconnected from QVapDevice, reconnecting...");
+    this->connect_to_ble();
+  });
+
+  this->parent()->add_on_notify_callback([this](const std::vector<uint8_t> &data) {
+    this->on_data(data.data(), data.size());
+  });
 }
 
-void QVAPDevice::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param) {
-  switch (event) {
-    case ESP_GATTC_REG_EVT:
-      ESP_LOGI(TAG, "REG_EVT, status %d, app_id %d", param->reg.status, param->reg.app_id);
-      if (param->reg.status == ESP_GATT_OK) {
-        this->start_scan();
-      }
+void QVAPDevice::loop() {
+  switch (this->state) {
+    case STATE_INIT_CONNECTION:
+      this->init_connection();
+      this->state = STATE_SETUP_INITIAL_PARAMS;
       break;
-    case ESP_GATTC_CONNECT_EVT:
-      ESP_LOGI(TAG, "CONNECT_EVT, conn_id %d, gatt_if %d, remote_bda [%02x:%02x:%02x:%02x:%02x:%02x]",
-               param->connect.conn_id, gattc_if,
-               param->connect.remote_bda[0], param->connect.remote_bda[1], param->connect.remote_bda[2],
-               param->connect.remote_bda[3], param->connect.remote_bda[4], param->connect.remote_bda[5]);
-      conn_id = param->connect.conn_id;
-      client_if = gattc_if;
-      esp_ble_gattc_search_service(gattc_if, conn_id, NULL);
+    case STATE_SETUP_INITIAL_PARAMS:
+      this->setup_initial_params();
+      this->state = STATE_PREPARE_DEVICE;
       break;
-    case ESP_GATTC_SEARCH_RES_EVT:
-      ESP_LOGI(TAG, "SEARCH_RES_EVT, conn_id %d, is_primary %d, service uuid: %04x",
-               param->search_res.conn_id, param->search_res.is_primary, param->search_res.srvc_id.uuid.uuid.uuid16);
-      if (memcmp(param->search_res.srvc_id.uuid.uuid.uuid128, QVAP_SERVICE_UUID, 16) == 0) {
-        ESP_LOGI(TAG, "Found QVAP service");
-      }
+    case STATE_PREPARE_DEVICE:
+      this->prepare_device();
+      this->state = STATE_ADDITIONAL_SETUP;
       break;
-    case ESP_GATTC_SEARCH_CMPL_EVT:
-      ESP_LOGI(TAG, "SEARCH_CMPL_EVT, conn_id %d, status %d", param->search_cmpl.conn_id, param->search_cmpl.status);
-      if (param->search_cmpl.status == ESP_GATT_OK) {
-        esp_ble_gattc_get_characteristic(gattc_if, param->search_cmpl.conn_id, NULL, NULL);
-      }
+    case STATE_ADDITIONAL_SETUP:
+      this->additional_setup();
+      this->state = STATE_FINAL_SETUP;
       break;
-    case ESP_GATTC_GET_CHAR_EVT:
-      ESP_LOGI(TAG, "GET_CHAR_EVT, conn_id %d, status %d, char uuid: %04x",
-               param->get_char.conn_id, param->get_char.status, param->get_char.char_id.uuid.uuid.uuid16);
-      if (param->get_char.status == ESP_GATT_OK) {
-        if (memcmp(param->get_char.char_id.uuid.uuid.uuid128, QVAP_CHARACTERISTIC_UUID, 16) == 0) {
-          ESP_LOGI(TAG, "Found QVAP characteristic");
-          char_handle_ = param->get_char.char_id.char_id.handle;
-          esp_ble_gattc_get_descriptor(gattc_if, param->get_char.conn_id, &param->get_char.char_id, NULL);
-        }
-      }
+    case STATE_FINAL_SETUP:
+      this->final_setup();
+      this->state = STATE_PERIODIC_UPDATE;
       break;
-    case ESP_GATTC_GET_DESCR_EVT:
-      ESP_LOGI(TAG, "GET_DESCR_EVT, conn_id %d, status %d, descr uuid: %04x",
-               param->get_descr.conn_id, param->get_descr.status, param->get_descr.descr_id.uuid.uuid.uuid16);
-      if (param->get_descr.status == ESP_GATT_OK) {
-        if (param->get_descr.descr_id.uuid.uuid.uuid16 == QVAP_DESCRIPTOR_UUID) {
-          ESP_LOGI(TAG, "Found QVAP descriptor");
-          uint8_t notify_en[2] = {0x01, 0x00};  // Enable notifications
-          esp_ble_gattc_write_char_descr(gattc_if, param->get_descr.conn_id, param->get_descr.descr_handle, sizeof(notify_en), notify_en, ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
-        }
-      }
+    case STATE_PERIODIC_UPDATE:
+      this->start_periodic_updates();
       break;
-    case ESP_GATTC_WRITE_DESCR_EVT:
-      ESP_LOGI(TAG, "WRITE_DESCR_EVT, conn_id %d, status %d", param->write.conn_id, param->write.status);
-      if (param->write.status != ESP_GATT_OK) {
-        ESP_LOGE(TAG, "write descriptor failed, status %d", param->write.status);
-        break;
-      }
-      state = STATE_INIT_CONNECTION;
-      write_sub_state_ = WRITE_IDLE;
-      this->set_ble_process_pending(false);
-      break;
-    case ESP_GATTC_WRITE_CHAR_EVT:
-      ESP_LOGI(TAG, "WRITE_CHAR_EVT, conn_id %d, status %d", param->write.conn_id, param->write.status);
-      if (param->write.status != ESP_GATT_OK) {
-        ESP_LOGE(TAG, "Write char failed, status %d", param->write.status);
-        write_sub_state_ = WRITE_FAILED;
-        break;
-      }
-      write_sub_state_ = WRITE_OK;
-      this->set_ble_process_pending(false);
-      break;
-    case ESP_GATTC_NOTIFY_EVT:
-      ESP_LOGI(TAG, "NOTIFY_EVT, conn_id %d, value_len %d, value:", param->notify.conn_id, param->notify.value_len);
-      esp_log_buffer_hex(TAG, param->notify.value, param->notify.value_len);
-      this->parse_response(param->notify.value, param->notify.value_len);
-      this->set_ble_process_pending(false);
-      break;
-    case ESP_GATTC_DISCONNECT_EVT:
-      ESP_LOGI(TAG, "DISCONNECT_EVT, conn_id %d, reason %d", param->disconnect.conn_id, param->disconnect.reason);
-      state = STATE_IDLE;  // Reset state
-      break;
+    case STATE_IDLE:
     default:
       break;
   }
 }
 
-void QVAPDevice::parse_response(uint8_t *response, size_t length) {
-  uint8_t command = response[0];
-  
-  if (command == 0x02) {  // Command that updates the application firmware status
-    application_firmware = response[1];
-    char firmware_version[7] = {0};
-    char bootloader_version[7] = {0};
-    memcpy(firmware_version, &response[2], 6);
-    memcpy(bootloader_version, &response[11], 6);
-    ESP_LOGI(TAG, "Application Firmware: %s, Bootloader: %s", firmware_version, bootloader_version);
-  } else if (command == 0x01 || command == 0x30) {
-    if (application_firmware & 0x01 && command != 0x30) {
-      uint16_t current_temp = (response[3] << 8) | response[2];
-      uint16_t set_temp = (response[5] << 8) | response[4];
-      uint8_t boost_temp = response[6];
-      uint8_t superboost_temp = response[7];
-      uint8_t battery_level = response[8];
-      uint16_t auto_shutoff = (response[10] << 8) | response[9];
-      uint8_t heater_mode = response[11];
-      uint8_t charger_status = response[13];
-      uint8_t settings_flags = response[14];
+void QVAPDevice::init_connection() {
+  this->send_command(INIT_CONNECTION);
+}
+
+void QVAPDevice::setup_initial_params() {
+  this->send_command(SETUP_INITIAL_PARAMS);
+}
+
+void QVAPDevice::prepare_device() {
+  this->send_command(PREPARE_DEVICE);
+}
+
+void QVAPDevice::additional_setup() {
+  this->send_command(ADDITIONAL_SETUP);
+}
+
+void QVAPDevice::final_setup() {
+  this->send_command(FINAL_SETUP);
+}
+
+void QVAPDevice::final_stage() {
+  std::vector<uint8_t> buffer(20, 0);
+  buffer[1] = 6;
+  if (this->application_firmware & 1) {  // Check if firmware is valid
+    ESP_LOGI(TAG, "Firmware application valid. Starting periodic updates.");
+    buffer[0] = BOOTLOADER_UPDATE;
+  } else {
+    buffer[0] = SETUP_INITIAL_PARAMS;
+  }
+  this->parent()->write_value(SERVICE_UUID_QVAP, CHARACTERISTIC_UUID, buffer.data(), buffer.size());
+}
+
+void QVAPDevice::send_command(Command command, const std::vector<uint8_t> &data) {
+  uint8_t buffer[20] = {0};
+  buffer[0] = command;
+  std::copy(data.begin(), data.end(), buffer + 1);
+  this->parent()->write_value(SERVICE_UUID_QVAP, CHARACTERISTIC_UUID, buffer, sizeof(buffer));
+}
+
+void QVAPDevice::start_periodic_updates() {
+  this->send_command(PREPARE_DEVICE);
+  this->send_command(SETUP_INITIAL_PARAMS);
+}
+
+void QVAPDevice::on_data(const uint8_t *data, size_t length) {
+  ESP_LOGI(TAG, "Notification received: %s", format_hex_pretty(data, length).c_str());
+  this->parse_response(data, length);
+}
+
+void QVAPDevice::parse_response(const uint8_t *data, size_t length) {
+  uint8_t command = data[0];
+  if (command == 2) {  // Command that updates the application firmware status
+    this->application_firmware = data[1];
+    std::string firmware_version(reinterpret_cast<const char*>(data + 2), 6);
+    std::string bootloader_version(reinterpret_cast<const char*>(data + 11), 6);
+    ESP_LOGI(TAG, "Application Firmware: %s, Bootloader: %s", firmware_version.c_str(), bootloader_version.c_str());
+
+    // Handle further firmware version comparison and update
+  } else if (command == 1 || command == 48) {
+    if (this->application_firmware & 1 && command != 48) {
+      this->current_temp = (data[3] << 8) + data[2];
+      this->set_temp = (data[5] << 8) + data[4];
+      this->boost_temp = data[6];
+      this->superboost_temp = data[7];
+      this->battery_level = data[8];
+      this->auto_shutoff = (data[10] << 8) + data[9];
+      this->heater_mode = data[11];
+      this->charger_status = data[13];
+      this->settings_flags = data[14];
 
       ESP_LOGI(TAG, "Current Temp: %d, Set Temp: %d, Boost Temp: %d, Superboost Temp: %d, Battery: %d, Auto-shutoff: %d, Heater Mode: %d, Charger: %d, Settings: %d",
-               current_temp, set_temp, boost_temp, superboost_temp, battery_level, auto_shutoff, heater_mode, charger_status, settings_flags);
+               this->current_temp, this->set_temp, this->boost_temp, this->superboost_temp, this->battery_level, this->auto_shutoff, this->heater_mode, this->charger_status, this->settings_flags);
+
+      // Publish sensor values
+      if (this->current_temp_sensor != nullptr)
+        this->current_temp_sensor->publish_state(this->current_temp);
+      if (this->set_temp_sensor != nullptr)
+        this->set_temp_sensor->publish_state(this->set_temp);
+      if (this->boost_temp_sensor != nullptr)
+        this->boost_temp_sensor->publish_state(this->boost_temp);
+      if (this->superboost_temp_sensor != nullptr)
+        this->superboost_temp_sensor->publish_state(this->superboost_temp);
+      if (this->battery_level_sensor != nullptr)
+        this->battery_level_sensor->publish_state(this->battery_level);
+      if (this->auto_shutoff_sensor != nullptr)
+        this->auto_shutoff_sensor->publish_state(this->auto_shutoff);
+      if (this->heater_mode_sensor != nullptr)
+        this->heater_mode_sensor->publish_state(this->heater_mode);
+      if (this->charger_status_sensor != nullptr)
+        this->charger_status_sensor->publish_state(this->charger_status);
+      if (this->settings_flags_sensor != nullptr)
+        this->settings_flags_sensor->publish_state(this->settings_flags);
     } else {
       ESP_LOGI(TAG, "_______cmd0x01 - bootloader");
-      uint8_t status = response[1];
-      if (status == 0x01) {
-        ESP_LOGI(TAG, "Page data write request");
-        this->write_page_data_sequence_qvap();
-      } else if (status == 0x02) {
-        ESP_LOGI(TAG, "Page write complete");
-        this->start_qvap_application(true);
-      } else if (status == 0x06) {
-        ESP_LOGI(TAG, "Connection interval too small; Firmware upgrade may fail");
-      } else if (status == 0x08) {
-        ESP_LOGI(TAG, "Decrypt data done");
-        uint8_t buffer[3];
-        buffer[0] = 0x30;
-        buffer[1] = 0x02;
-        buffer[2] = page_idx_qvap;
-        this->send_command(buffer[0], {buffer[1], buffer[2]});
-      } else if (status == 0x22) {
-        ESP_LOGI(TAG, "Erase failed, please retry");
-      } else if (status == 0x13 || status == 0x33 || status == 0x23 || status == 0x52 || status == 0x62) {
-        ESP_LOGI(TAG, "Validation failed, please retry");
-        if (nb_retries_validation < 1) {
-          this->start_qvap_application(true);
-          nb_retries_validation++;
+      // Handle bootloader update steps
+      uint8_t status = data[1];
+      if (status == 1) {
+        this->data_idx_qvap += 1;
+        if (this->data_idx_qvap >= this->page_size_qvap / this->data_size_firmware_per_packet) {
+          ESP_LOGI(TAG, "page write start request");
+        } else {
+          ESP_LOGI(TAG, "page data write request");
         }
+        this->write_page_data_sequence_qvap();
+      } else if (status == 2) {
+        this->page_idx_qvap += 1;
+        this->data_idx_qvap = 0;
+        ESP_LOGI(TAG, "page %d write done", this->page_idx_qvap);
+        if (this->page_idx_qvap < this->binary_number_of_pages) {
+          this->write_page_data_sequence_qvap();
+        } else {
+          delay(200);
+          this->start_qvap_application(true);
+        }
+      } else if (status == 3) {
+        // Additional status handling if needed
+      } else if (status == 4) {
+        // Additional status handling if needed
+      } else if (status == 5) {
+        // Additional status handling if needed
+      } else if (status == 6) {
+        uint8_t connection_interval = data[2];
+        ESP_LOGI(TAG, "connection interval %d", connection_interval);
+        if (connection_interval < 25) {
+          ESP_LOGI(TAG, "BLE connection interval too small; Firmware upgrade will fail");
+        }
+      } else if (status == 8) {
+        ESP_LOGI(TAG, "decrypt data done");
+        std::vector<uint8_t> buffer(3);
+        buffer[0] = this->update_bootloader ? BOOTLOADER_UPDATE : SETUP_INITIAL_PARAMS;
+        buffer[1] = 2;
+        buffer[2] = this->page_idx_qvap;
+        this->parent()->write_value(SERVICE_UUID_QVAP, CHARACTERISTIC_UUID, buffer.data(), buffer.size());
+      } else if (status == 34) {
+        ESP_LOGE(TAG, "Erase failed: please reload and retry.");
+      } else if (status == 19) {
+        ESP_LOGE(TAG, "Validation failed: please reload and retry.");
+        if (this->nb_retries_validation < 1) {
+          this->start_qvap_application(true);
+          this->nb_retries_validation += 1;
+        }
+      } else if (status == 51) {
+        ESP_LOGE(TAG, "Validation failed (mode): please reload and retry.");
+      } else if (status == 35) {
+        ESP_LOGE(TAG, "Validation failed: please reload and retry.");
+      } else if (status == 82) {
+        ESP_LOGE(TAG, "VersionMajor failed: please reload and retry.");
+      } else if (status == 98) {
+        ESP_LOGE(TAG, "VersionMinor failed: please reload and retry.");
       } else {
-        ESP_LOGI(TAG, "Undefined status: %d", status);
+        ESP_LOGI(TAG, "undefined status %d - %d", status, data[2]);
       }
     }
-  } else if (command == 0x03) {
-    uint8_t err_code = response[1];
-    uint8_t err_category = response[2];
-    if (err_category == 0x04) {
+  } else if (command == 3) {
+    uint8_t err_code = data[1];
+    uint8_t err_category = data[2];
+    if (err_category == 4) {
       ESP_LOGI(TAG, "Start analysis");
     } else {
       ESP_LOGI(TAG, "Device analysis successful");
-      if (response[3] < 9) {
+      if (data[3] < 9) {
         ESP_LOGI(TAG, "Display brightness reduced");
       }
-      if (response[4] & 0x01) {
+      if (data[4] & 1) {
         ESP_LOGI(TAG, "Charge limit activated");
       }
-      if (!(response[5] & 0x01)) {
+      if (!(data[5] & 1)) {
         ESP_LOGI(TAG, "Boost visualization disabled");
       }
-      if (response[6] & 0x01) {
+      if (data[6] & 1) {
         ESP_LOGI(TAG, "Charge optimization activated");
       }
-      if (!(response[7] & 0x01)) {
+      if (!(data[7] & 1)) {
         ESP_LOGI(TAG, "Vibration disabled");
       }
+      if (this->brightness_sensor != nullptr)
+        this->brightness_sensor->publish_state(data[2]);
+      if (this->vibration_sensor != nullptr)
+        this->vibration_sensor->publish_state(data[5]);
     }
-  } else if (command == 0x04) {
+  } else if (command == 4) {
     if (length >= 20) {
-      uint32_t heater_runtime_minutes = (response[3] << 16) | (response[2] << 8) | response[1];
-      uint32_t battery_charging_time_minutes = (response[6] << 16) | (response[5] << 8) | response[4];
-      ESP_LOGI(TAG, "Heater Runtime: %d minutes, Battery Charging Time: %d minutes", heater_runtime_minutes, battery_charging_time_minutes);
+      this->heater_runtime_minutes = (data[1] | (data[2] << 8) | (data[3] << 16));
+      this->battery_charging_time_minutes = (data[4] | (data[5] << 8) | (data[6] << 16));
+      ESP_LOGI(TAG, "Heater Runtime: %d minutes, Battery Charging Time: %d minutes", this->heater_runtime_minutes, this->battery_charging_time_minutes);
+      if (this->heater_runtime_sensor != nullptr)
+        this->heater_runtime_sensor->publish_state(this->heater_runtime_minutes);
+      if (this->battery_charging_time_sensor != nullptr)
+        this->battery_charging_time_sensor->publish_state(this->battery_charging_time_minutes);
     }
-  } else if (command == 0x05) {
+  } else if (command == 5) {
     if (length >= 17) {
-      char device_prefix[3] = {0};
-      char device_name[7] = {0};
-      memcpy(device_prefix, &response[15], 2);
-      memcpy(device_name, &response[9], 6);
-      ESP_LOGI(TAG, "Device Prefix: %s, Device Name: %s", device_prefix, device_name);
+      this->device_prefix = std::string(reinterpret_cast<const char*>(data + 15), 2);
+      this->device_name = std::string(reinterpret_cast<const char*>(data + 9), 6);
+      ESP_LOGI(TAG, "Device Prefix: %s, Device Name: %s", this->device_prefix.c_str(), this->device_name.c_str());
+      if (this->device_prefix_sensor != nullptr)
+        this->device_prefix_sensor->publish_state(this->device_prefix);
+      if (this->device_name_sensor != nullptr)
+        this->device_name_sensor->publish_state(this->device_name);
     }
-  } else if (command == 0x06) {
+  } else if (command == 6) {
     if (length >= 5) {
-      uint8_t brightness = response[2];
-      uint8_t vibration = response[5];
-      ESP_LOGI(TAG, "Brightness: %d, Vibration: %s", brightness, vibration ? "Enabled" : "Disabled");
+      this->brightness = data[2];
+      this->vibration = data[5];
+      ESP_LOGI(TAG, "Brightness: %d, Vibration: %s", this->brightness, (this->vibration ? "Enabled" : "Disabled"));
+      if (this->brightness_sensor != nullptr)
+        this->brightness_sensor->publish_state(this->brightness);
+      if (this->vibration_sensor != nullptr)
+        this->vibration_sensor->publish_state(this->vibration);
     }
   } else {
-    ESP_LOGI(TAG, "Unknown command: %d", command);
+    ESP_LOGI(TAG, "Default command %d", command);
   }
 }
 
-void QVAPDevice::send_command(uint8_t command, const std::vector<uint8_t> &data) {
-  uint8_t buffer[32] = {0};
-  buffer[0] = command;
-  if (!data.empty()) {
-    memcpy(buffer + 1, data.data(), data.size());
+void QVAPDevice::on_scan_found_device(const esp32_ble_tracker::ESPBTDevice &device) {
+  // Check if the device matches the iBeacon UUID or name
+  if (device.get_name() == this->ibeacon_name || device.address_str() == this->ibeacon_address) {
+    ESP_LOGI(TAG, "Found QVapDevice by iBeacon UUID or name: %s", device.address_str().c_str());
+    this->parent()->stop_scan();
+    this->parent()->connect(&device);
   }
-  esp_ble_gattc_write_char(client_if, conn_id, char_handle_, sizeof(buffer), buffer, ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
+}
+
+void QVAPDevice::write_page_data_sequence_qvap() {
+  // Implement the write page data sequence logic here
+}
+
+void QVAPDevice::write_page_data_sequence_qvap() {
+  // Implement the write page data sequence logic here
+}
+
+void QVAPDevice::start_qvap_application(bool repeat) {
+  // Implement the start QVAP application logic here
+}
+
+void QVAPDevice::set_target_temperature(float value) {
+  int int_value = static_cast<int>(value * 10);
+  std::vector<uint8_t> buffer(20, 0);
+  buffer[0] = 1;  // Command for setting the target temperature
+  buffer[1] = 2;  // MASK_SET_TEMPERATURE_WRITE
+  buffer[4] = int_value & 0xFF;
+  buffer[5] = (int_value >> 8) & 0xFF;
+  this->parent()->write_value(SERVICE_UUID_QVAP, CHARACTERISTIC_UUID, buffer.data(), buffer.size());
+  ESP_LOGI(TAG, "Set target temperature to %.1f°C", value);
 }
 
 }  // namespace qvap_device
