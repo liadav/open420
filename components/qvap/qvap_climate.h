@@ -1,7 +1,6 @@
 #pragma once
 
-#include "esphome/core/component.h"
-#include "esphome/components/climate/climate.h"
+#include "esphome.h"
 #include "qvap_device.h"
 
 namespace esphome {
