@@ -1,4 +1,5 @@
 #include "qvap_device.h"
+#include "esphome/components/esp32_ble_tracker/esp32_ble_tracker.h"
 #include "esphome/core/log.h"
 
 namespace esphome {
@@ -83,18 +84,18 @@ void QVapDevice::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t g
 }
 
 void QVapDevice::start_scan() {
-  auto *ble = this->parent()->get_ble();
-  ble->set_scan_interval(16);  // 10ms
-  ble->set_scan_window(16);    // 10ms
-
-  auto scanner = ble->scan();
-  scanner.set_interval(16);
-  scanner.set_window(16);
-  scanner.set_active(true);
-  scanner.set_callback([this](const esp32_ble_tracker::ESPBTDevice &device) {
+  ESP_LOGI(TAG, "Starting scan for QVap device");
+  auto *ble = esp32_ble_tracker::global_ble_tracker;
+  if (ble == nullptr) {
+    ESP_LOGE(TAG, "BLE tracker is not initialized");
+    return;
+  }
+  
+  ble->set_scan_interval(1600);  // 1 second
+  ble->set_scan_window(1600);    // 1 second
+  ble->start_scan([this](const esp32_ble_tracker::ESPBTDevice &device) {
     return this->parse_device(device);
   });
-  scanner.start();
 }
 
 bool QVapDevice::parse_device(const esp32_ble_tracker::ESPBTDevice &device) {
