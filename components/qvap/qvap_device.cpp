@@ -8,7 +8,30 @@ namespace qvap {
 static const char *TAG = "qvap";
 
 void QVapDevice::setup() {
-  this->start_scan();
+  this->setup_state_ = IDLE;
+  this->last_setup_step_time_ = millis();
+}
+
+void QVapDevice::on_client_state(esp32_ble_tracker::ClientState state) {
+  switch (state) {
+    case esp32_ble_tracker::ClientState::INIT:
+      ESP_LOGI(TAG, "QVap device initialized");
+      break;
+    case esp32_ble_tracker::ClientState::DISCONNECTED:
+      ESP_LOGI(TAG, "QVap device disconnected");
+      this->setup_state_ = IDLE;
+      break;
+    case esp32_ble_tracker::ClientState::CONNECTING:
+      ESP_LOGI(TAG, "Connecting to QVap device...");
+      break;
+    case esp32_ble_tracker::ClientState::CONNECTED:
+      ESP_LOGI(TAG, "Connected to QVap device");
+      break;
+    case esp32_ble_tracker::ClientState::ESTABLISHED:
+      ESP_LOGI(TAG, "Connection to QVap device established");
+      this->setup_state_ = IDLE;
+      break;
+  }
 }
 
 void QVapDevice::loop() {

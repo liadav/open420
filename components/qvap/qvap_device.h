@@ -19,6 +19,7 @@ class QVapDevice : public ble_client::BLEClientNode, public Component {
   void setup() override;
   void loop() override;
   void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param) override;
+  void on_client_state(esp32_ble_tracker::ClientState state) override;
   void set_address(uint64_t address) { address_ = address; }
   
   void set_current_temp_sensor(sensor::Sensor *current_temp_sensor) { current_temp_sensor_ = current_temp_sensor; }
@@ -30,7 +31,6 @@ class QVapDevice : public ble_client::BLEClientNode, public Component {
   void set_target_temperature(float temperature);
 
  protected:
-  void start_scan();
   bool parse_device(const esp32_ble_tracker::ESPBTDevice &device);
   void connect();
   void disconnect();
