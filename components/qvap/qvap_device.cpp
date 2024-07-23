@@ -85,7 +85,7 @@ void QVapDevice::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t g
 
 void QVapDevice::start_scan() {
   ESP_LOGI(TAG, "Starting scan for QVap device");
-  auto *ble = esp32_ble_tracker::global_ble_tracker;
+  auto *ble = esp32_ble_tracker::global_esp32_ble_tracker;
   if (ble == nullptr) {
     ESP_LOGE(TAG, "BLE tracker is not initialized");
     return;
